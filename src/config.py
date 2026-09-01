@@ -33,7 +33,15 @@ BASE_DIR = os.environ.get("HDFS_BASE_DIR", f"/user/{HDFS_USER}")
 INPUT_DIR = f"{BASE_DIR}/Input_dir"
 OUTPUT_DIR = f"{BASE_DIR}/Output_dir"
 
-# File names are derived from the download URL, never hardcoded.
+# Real-time pipeline: Spark Streaming monitors Input_dir for new files and
+# appends results to STREAMING_OUTPUT_DIR. The checkpoint tracks which input
+# files are already processed, so a restart skips them.
+STREAMING_OUTPUT_DIR = f"{OUTPUT_DIR}/streaming"
+CHECKPOINT_DIR = f"{BASE_DIR}/.checkpoint"
+
+# File names are derived from the download URL, never hardcoded. The extract
+# script appends a timestamp suffix, because Spark Streaming only reacts to
+# NEW files, never to a file overwritten with the same name.
 FILENAME = Path(unquote(urlsplit(SOURCE_URL).path)).name
 INPUT_FILE = f"{INPUT_DIR}/{FILENAME}"
 OUTPUT_FILE = f"{OUTPUT_DIR}/transform_{FILENAME}"

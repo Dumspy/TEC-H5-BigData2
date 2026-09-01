@@ -7,21 +7,27 @@ the source into HDFS and never touches the local file system.
 
 from __future__ import annotations
 
+import time
+
 import requests
 from hdfs import InsecureClient
 
-from .config import HEADERS, HDFS_USER, INPUT_FILE, SOURCE_URL, WEBHDFS_URL
+from .config import (
+    HEADERS,
+    HDFS_USER,
+    INPUT_FILE,
+    SOURCE_URL,
+    WEBHDFS_URL,
+)
 
 CHUNK_SIZE = 64 * 1024
 
 
-def extract(
-    url: str = SOURCE_URL,
-    destination: str = INPUT_FILE,
-) -> str:
+def extract(url: str = SOURCE_URL) -> str:
     """Download the dataset from the source and store it on HDFS.
 
-    Returns the HDFS path of the stored CSV.
+    Each run writes a NEW file (URL name + timestamp suffix) into Input_dir,
+    so the streaming Spark job picks it up. Returns the HDFS path.
     """
 
     # DATA SECURITY AND DATA INTEGRITY:
@@ -29,11 +35,17 @@ def extract(
     # - Both transfers (source -> HDFS) are plain library calls, no shell and
     #   no external process is involved, so command-line injection is
     #   impossible.
-    # - The destination name is derived from the URL basename (see
-    #   filename_for in config.py), never hardcoded, so the saved CSV keeps
-    #   its original name.
+    # - The destination name is derived from the URL basename plus a
+    #   timestamp (see filename_for in config.py), never hardcoded.
+    # - Plain library calls mean the URL can never become shell syntax:
+    #   no command-line injection surface exists.
     if not url.lower().startswith("https://"):
         raise ValueError("The dataset URL must be a valid HTTPS URL")
+
+    # New file name on every run: Spark Streaming only processes NEW files,
+    # so a re-triggered extract must not reuse an existing name.
+    stem = INPUT_FILE.rsplit(".", 1)[0]
+    destination = f"{stem}_{int(time.time())}.csv"
 
     client = InsecureClient(WEBHDFS_URL, user=HDFS_USER)
 
@@ -53,8 +65,8 @@ def extract(
     #   data. The old file is only removed just before the rename.
     # - The requests timeout stops a stalled connection from hanging forever,
     #   and raise_for_status() rejects HTTP error pages.
-    # - Every run starts from a clean state, so the old CSV is always
-    #   overwritten instead of appended to.
+    # - The complete file appears on HDFS in one atomic rename, so the
+    #   streaming job never sees a partially written CSV.
     temporary = f"{destination}.download"
     client.delete(temporary, recursive=True)
     client.delete(destination, recursive=False)
@@ -62,3 +74,8 @@ def extract(
     client.rename(temporary, destination)
 
     return destination
+
+
+if __name__ == "__main__":
+    path = extract()
+    print(f"Extracted data to: {path}")

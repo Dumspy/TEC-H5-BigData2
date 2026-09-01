@@ -1,7 +1,46 @@
-# Iris ETL Pipeline (HDFS / Spark)
+# Iris ETL Pipeline — real-time (Spark Streaming)
 
-A minimal big data pipeline with Extract, Transform and Load (ETL) that runs
-against the installed Hadoop/HDFS and Apache Spark cluster.
+This branch implements **Krav 2**: a real-time pipeline where Spark runs as a
+background process (transform + load only) that watches `Input_dir` on HDFS.
+Every manual activation of the extract script drops a new file, which Spark
+automatically transforms and loads.
+
+```text
+Input_dir on HDFS <---- manual extract (new file each run)
+        |  Spark Streaming watches (background process)
+        v
+filter species == Iris-setosa  (transform)
+        |  every 10 seconds
+        v
+Output_dir/streaming/part-*.csv  (load, append per batch)
+```
+
+## Run
+
+Terminal 1 — start the Spark background watcher (transform + load only):
+
+```bash
+HDFS_HOST=big-data SPARK_DRIVER_HOST=$(tailscale ip -4) uv run python -m src.main
+```
+
+Terminal 2 — manually activate extract whenever you want to feed data:
+
+```bash
+HDFS_HOST=big-data uv run python -m src.extract
+```
+
+Terminal 3 — watch results appear within seconds:
+
+```bash
+hdfs dfs -cat /user/nixos/Output_dir/streaming/part-*
+```
+
+Each extract writes a NEW file (`iris_<timestamp>.csv`) into Input_dir,
+because Spark Streaming only reacts to new files. The checkpoint in
+`/user/nixos/.checkpoint` tracks processed files, so a restarted watcher
+skips old input.
+
+The batch pipeline (Krav 1) lives on the `development` branch.
 
 ```text
 GitHub HTTPS source (iris.csv)
