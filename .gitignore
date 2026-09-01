@@ -1,4 +1,6 @@
 .devenv
 .direnv
+.venv
+__pycache__/
 hadoop-*/
 spark-*/
