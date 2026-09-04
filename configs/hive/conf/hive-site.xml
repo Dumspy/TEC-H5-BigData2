@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<configuration>
+  <property>
+    <name>hive.metastore.warehouse.dir</name>
+    <value>/user/hive/warehouse</value>
+  </property>
+  <property>
+    <name>hive.exec.scratchdir</name>
+    <value>/tmp</value>
+  </property>
+  <property>
+    <name>hive.exec.local.scratchdir</name>
+    <value>/tmp/${user.name}</value>
+    <description>Local scratch space for Hive jobs</description>
+  </property>
+  <property>
+    <name>hive.downloaded.resources.dir</name>
+    <value>/tmp/${user.name}_resources</value>
+    <description>Local directory for downloaded resources</description>
+  </property>
+  <property>
+    <name>javax.jdo.option.ConnectionURL</name>
+    <value>jdbc:derby:;databaseName=/home/nixos/TEC-H5-BigData2/apache-hive-4.2.1-bin/metastore_db;create=true</value>
+    <description>Embedded Derby-database til Hive-metastoren</description>
+  </property>
+  <property>
+    <name>javax.jdo.option.ConnectionDriverName</name>
+    <value>org.apache.derby.iapi.jdbc.AutoloadedDriver</value>
+  </property>
+  <property>
+    <name>hive.server2.enable.doAs</name>
+    <value>false</value>
+    <description>Uden impersonation — nødvendigt for HiveServer2 på en lokal single-user opsætning</description>
+  </property>
+  <property>
+    <name>hive.execution.engine</name>
+    <value>mr</value>
+    <description>MapReduce i stedet for Tez — Tez skal installeres separat og følger ikke med Hive</description>
+  </property>
+  <property>
+    <name>hive.input.format</name>
+    <value>org.apache.hadoop.hive.ql.io.HiveInputFormat</value>
+    <description>Undlad CombineHiveInputFormat — den ødelægger skip.header.line.count på små filer</description>
+  </property>
+</configuration>
